@@ -24,7 +24,7 @@ const particlesOptions = {
 const initialState = {
   input: '',
   imageUrl: '',
-  box: {},
+  boxes: [],
   route: 'signin',
   isSignedIn: false,
   user: {
@@ -52,22 +52,32 @@ class App extends Component {
     }})
   }
 
-  calculateFaceLocation = (data) => {
-    const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
+ calculateFaceLocations = (data) => {
+    const listLength = data.outputs[0].data.regions.length
     const image = document.getElementById('inputimage');
     const width = Number(image.width);
     const height = Number(image.height);
-    return {
-      leftCol: clarifaiFace.left_col * width,
-      topRow: clarifaiFace.top_row * height,
-      rightCol: width - (clarifaiFace.right_col * width),
-      bottomRow: height - (clarifaiFace.bottom_row * height)
+    const faceObject = []
+      for (let i=0; i < listLength; i++) {
+        let faceList = data.outputs[0].data.regions[i].region_info.bounding_box
+          let object = {
+          leftCol: faceList.left_col * width,
+          topRow: faceList.top_row * height,
+          rightCol: width - (faceList.right_col * width),
+          bottomRow: height - (faceList.bottom_row * height)
+        }
+        faceObject.push(object)
     }
+    return faceObject
   }
 
-  displayFaceBox = (box) => {
-    this.setState({box: box});
-  }
+  displayFaceBoxes = (boxes) => {
+     let obj = []    
+    for (let i=0; i < boxes.length; i++) {
+      obj.push(boxes[i])
+      this.setState({boxes: obj})
+    }
+ }
 
   onInputChange = (event) => {
     this.setState({input: event.target.value});
@@ -75,7 +85,7 @@ class App extends Component {
 
   onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input});
-      fetch('https://blooming-castle-68593.herokuapp.com/imageurl', {
+      fetch('https://whispering-lowlands-28773.herokuapp.com/imageurl', {
         method: 'post',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -85,7 +95,7 @@ class App extends Component {
       .then(response => response.json())
       .then(response => {
         if (response) {
-          fetch('https://blooming-castle-68593.herokuapp.com/image', {
+          fetch('https://whispering-lowlands-28773.herokuapp.com/image', {
             method: 'put',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -99,7 +109,7 @@ class App extends Component {
             .catch(console.log)
 
         }
-        this.displayFaceBox(this.calculateFaceLocation(response))
+        this.displayFaceBoxes(this.calculateFaceLocations(response))
       })
       .catch(err => console.log(err));
   }
@@ -114,16 +124,16 @@ class App extends Component {
   }
 
   render() {
-    const { isSignedIn, imageUrl, route, box } = this.state;
+    const { isSignedIn, imageUrl, route, boxes } = this.state;
     return (
       <div className="App">
          <Particles className='particles'
           params={particlesOptions}
         />
         <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
-        <Logo />
         { route === 'home'
           ? <div>
+              <Logo />
               <Rank
                 name={this.state.user.name}
                 entries={this.state.user.entries}
@@ -132,7 +142,7 @@ class App extends Component {
                 onInputChange={this.onInputChange}
                 onButtonSubmit={this.onButtonSubmit}
               />
-              <FaceRecognition box={box} imageUrl={imageUrl} />
+              <FaceRecognition boxes={boxes} imageUrl={imageUrl}/>
             </div>
           : (
              route === 'signin'
